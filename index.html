@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>にゃんこ大戦争 全キャラチェッカー</title>
+    <style>
+        /* --- デザイン設定（既存を維持） --- */
+        :root {
+            --primary-color: #ffb74d;
+            --accent-color: #ffcc80;
+            --bg-color: #fff8e1;
+            --text-color: #5d4037;
+            --card-bg: #ffffff;
+            --border-color: #e0e0e0;
+        }
+
+        body {
+            font-family: "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", Meiryo, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 10px;
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 25px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            border: 3px solid #ffe0b2;
+        }
+
+        .main-title {
+            margin: 10px 0;
+            font-size: 26px;
+            color: #ffffff;
+            font-family: "Arial Rounded MT Bold", sans-serif;
+            text-shadow: 2px 2px 0 #8d6e63, -1px -1px 0 #8d6e63, 1px -1px 0 #8d6e63, -1px 1px 0 #8d6e63, 4px 4px 8px rgba(0,0,0,0.4);
+            line-height: 1.3;
+        }
+
+        .header {
+            position: sticky;
+            top: 10px;
+            background: #8d6e63;
+            color: white;
+            padding: 20px 15px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 1000;
+            margin-bottom: 25px;
+            border: 4px solid #5d4037;
+            box-shadow: 0 6px 0 #5d4037;
+        }
+
+        .stats { font-size: 1.1rem; font-weight: bold; line-height: 1.4; }
+        .percent { color: #fff176; font-size: 1.8rem; text-shadow: 1px 1px 0 #bf360c; }
+
+        /* --- 検索・フィルタエリア --- */
+        .search-area { margin-bottom: 20px; text-align: center; }
+        .search-input {
+            width: 80%; padding: 12px; border-radius: 25px; border: 2px solid #ffe0b2; 
+            outline: none; font-size: 16px; margin-bottom: 10px;
+        }
+        .filter-controls {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; 
+            color: #5d4037; font-weight: bold; font-size: 14px;
+        }
+        .series-select {
+            padding: 5px; border-radius: 10px; border: 2px solid #ffe0b2; color: #5d4037; font-weight: bold;
+        }
+
+        /* --- タブ・グリッド --- */
+        .tabs { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; justify-content: center; }
+        .tab-btn {
+            padding: 10px 15px; border: 2px solid #d7ccc8; background: #efebe9;
+            cursor: pointer; border-radius: 12px; font-weight: bold; color: #8d6e63;
+            transition: all 0.3s; flex: 1 1 80px; box-shadow: 0 4px 0 #d7ccc8;
+        }
+        .tab-btn.active {
+            background: #ff9800 !important; color: #ffffff !important;
+            border-color: #e65100; box-shadow: 0 2px 0 #e65100; transform: translateY(2px);
+        }
+
+        .grid { display: none; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 12px; padding: 10px; }
+        /* JSで制御するため active クラスの直接指定は削除 */
+
+        /* --- キャラクタカード --- */
+        .char {
+            width: 85px; height: 110px; border: 2px solid var(--border-color);
+            border-radius: 15px; cursor: pointer; transition: all 0.2s ease;
+            background: #fff; display: flex; flex-direction: column; align-items: center;
+            justify-content: flex-start;
+            overflow: hidden; filter: grayscale(100%); opacity: 0.4;
+            position: relative;
+        }
+        .char.owned {
+            filter: grayscale(0%); opacity: 1; border: 3px solid var(--primary-color);
+            box-shadow: 0 4px 10px rgba(255, 152, 0, 0.3); background: #fffdf9;
+        }
+        .char img { 
+            width: 60px; 
+            height: 60px; 
+            object-fit: contain; 
+            margin-top: 8px; 
+            flex-shrink: 0;
+            border: none;
+        }
+        .char-name {
+            font-size: 9px; font-weight: bold; text-align: center; 
+            color: #795548; background: rgba(255, 224, 178, 0.5); width: 100%;
+            padding: 3px 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;
+            position: absolute;
+            bottom: 0;
+        }
+
+        .reset-area { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 2px dashed #ffe0b2; }
+        .btn-red { background: #ef5350; color: white; border: none; padding: 12px 24px; border-radius: 30px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1 class="main-title">にゃんこ大戦争<br>キャラチェッカー</h1>
+        <div class="stats">
+            合計所持数: <span id="ownedCount">0</span> / <span id="totalCount">0</span>
+            <br><span id="percent" class="percent">0%</span>
+        </div>
+    </div>
+
+    <div class="search-area">
+        <input type="text" id="searchInput" class="search-input" placeholder="キャラクター名で検索...">
+        
+        <div class="filter-controls">
+            <label style="cursor: pointer;"><input type="checkbox" id="filterOwned"> 所持のみ</label>
+            <label style="cursor: pointer;"><input type="checkbox" id="filterUnowned"> 未所持のみ</label>
+            
+            <select id="seriesSelect" class="series-select">
+                <option value="all">すべてのガチャ</option>
+                <option value="超極ネコ祭">超極ネコ祭</option>
+                <option value="究極降臨ギガントゼウス">ギガントゼウス</option>
+                <option value="戦国武神バサラーズ">バサラーズ</option>
+                <option value="伝説のネコルガ族">ネコルガ族</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="tabs" id="tabMenu">
+        <button class="tab-btn active" data-rarity="legend" onclick="toggleTab('legend')">伝説</button>
+        <button class="tab-btn" data-rarity="uber" onclick="toggleTab('uber')">超激</button>
+        <button class="tab-btn" data-rarity="super" onclick="toggleTab('super')">激レア</button>
+        <button class="tab-btn" data-rarity="rare" onclick="toggleTab('rare')">レア</button>
+        <button class="tab-btn" data-rarity="EX" onclick="toggleTab('EX')">EX</button>
+        <button class="tab-btn" data-rarity="basic" onclick="toggleTab('basic')">基本</button>
+    </div>
+
+    <div id="legend" class="grid"></div>
+    <div id="uber" class="grid"></div>
+    <div id="super" class="grid"></div>
+    <div id="rare" class="grid"></div>
+    <div id="EX" class="grid"></div>
+    <div id="basic" class="grid"></div>
+
+    <div class="reset-area">
+        <button class="btn-red" onclick="resetAll()">データをリセット</button>
+    </div>
+</div>
+
+<footer style="text-align: center; margin-top: 40px; padding: 20px; border-top: 2px solid #ffe0b2;">
+    <div style="margin-bottom: 10px;">
+        <a href="policy.html" style="color: #8d6e63; text-decoration: none; margin: 0 10px; font-size: 14px;">プライバシーポリシー</a>
+        <a href="contact.html" style="color: #8d6e63; text-decoration: none; margin: 0 10px; font-size: 14px;">お問い合わせ</a>
+    </div>
+    <p style="font-size: 12px; color: #bcaaa4;">© 2026 にゃんこ大戦争 全キャラチェッカー (非公式)</p>
+</footer>
+
+<script>
+let ownedList = JSON.parse(localStorage.getItem('nyanko_all_data')) || [];
+let activeRarities = ['legend']; // 初期選択
+
+async function loadDatabase() {
+    try {
+        const response = await fetch('characters.json');
+        if (!response.ok) throw new Error("ファイルが見つかりません");
+        return await response.json();
+    } catch (e) {
+        console.error("データの読み込みに失敗しました:", e);
+        return null;
+    }
+}
+
+async function init() {
+    const database = await loadDatabase();
+    if (!database) return;
+
+    let total = 0;
+    for (const rarity in database) {
+        const grid = document.getElementById(rarity);
+        if (!grid) continue;
+
+        database[rarity].forEach(char => {
+            total++;
+            const div = document.createElement('div');
+            div.id = `c-${char.id}`;
+            div.className = `char ${ownedList.includes(char.id) ? 'owned' : ''}`;
+            div.setAttribute('data-series', char.series || "");
+
+            const zeroPaddedId = String(char.id).padStart(4, '0');
+            const displayImg = (char.img && char.img.startsWith('http')) 
+                               ? char.img 
+                               : `img/${zeroPaddedId}.png`;
+
+            div.innerHTML = `
+                <img src="${displayImg}" 
+                     loading="lazy" 
+                     alt="${char.name}" 
+                     onerror="this.src='https://via.placeholder.com/60?text=No+Img'; this.onerror=null;">
+                <span class="char-name">${char.name}</span>
+            `;
+
+            div.onclick = () => toggle(char.id);
+            grid.appendChild(div);
+        });
+    }
+    document.getElementById('totalCount').innerText = total;
+    updateStats();
+    applyAllFilters(); // 初回表示
+}
+
+// タブの切り替え（トグル式）
+function toggleTab(rarity) {
+    if (activeRarities.includes(rarity)) {
+        // すでに選択されている場合は解除（ただし1つも選択されないのは避けるなら条件追加）
+        if (activeRarities.length > 1) {
+            activeRarities = activeRarities.filter(r => r !== rarity);
+        }
+    } else {
+        // 未選択なら追加
+        activeRarities.push(rarity);
+    }
+
+    // ボタンの見た目を更新
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        const r = btn.getAttribute('data-rarity');
+        if (activeRarities.includes(r)) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    applyAllFilters();
+}
+
+function toggle(id) {
+    const el = document.getElementById(`c-${id}`);
+    if (ownedList.includes(id)) {
+        ownedList = ownedList.filter(i => i !== id);
+        if(el) el.classList.remove('owned');
+    } else {
+        ownedList.push(id);
+        if(el) el.classList.add('owned');
+    }
+    localStorage.setItem('nyanko_all_data', JSON.stringify(ownedList));
+    updateStats();
+}
+
+function updateStats() {
+    const count = ownedList.length;
+    const total = parseInt(document.getElementById('totalCount').innerText) || 0;
+    const per = total > 0 ? Math.round((count / total) * 100) : 0;
+    document.getElementById('ownedCount').innerText = count;
+    document.getElementById('percent').innerText = per + "%";
+}
+
+function resetAll() {
+    if(confirm("全てのチェックを消去しますか？")) {
+        localStorage.removeItem('nyanko_all_data');
+        location.reload();
+    }
+}
+
+function applyAllFilters() {
+    const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+    const isFilterUnowned = document.getElementById('filterUnowned').checked;
+    const isFilterOwned = document.getElementById('filterOwned').checked;
+    const selectedSeries = document.getElementById('seriesSelect').value;
+
+    const grids = document.querySelectorAll('.grid');
+
+    // グリッド全体の表示・非表示
+    grids.forEach(grid => {
+        const rarity = grid.id;
+        if (activeRarities.includes(rarity)) {
+            grid.style.display = 'grid';
+            
+            // そのレア度の中の各キャラをフィルタ
+            const chars = grid.querySelectorAll('.char');
+            chars.forEach(char => {
+                const charName = char.querySelector('.char-name').innerText.toLowerCase();
+                const isOwned = char.classList.contains('owned');
+                const charSeries = char.getAttribute('data-series') || "";
+
+                const nameMatch = charName.includes(searchTerm);
+                const unownedMatch = !isFilterUnowned || !isOwned;
+                const ownedMatch = !isFilterOwned || isOwned;
+                const seriesMatch = (selectedSeries === "all" || charSeries === selectedSeries);
+
+                char.style.display = (nameMatch && unownedMatch && ownedMatch && seriesMatch) ? 'flex' : 'none';
+            });
+        } else {
+            grid.style.display = 'none';
+        }
+    });
+}
+
+document.getElementById('searchInput').addEventListener('input', applyAllFilters);
+document.getElementById('seriesSelect').addEventListener('change', applyAllFilters);
+
+document.getElementById('filterUnowned').addEventListener('change', (e) => {
+    if(e.target.checked) document.getElementById('filterOwned').checked = false;
+    applyAllFilters();
+});
+document.getElementById('filterOwned').addEventListener('change', (e) => {
+    if(e.target.checked) document.getElementById('filterUnowned').checked = false;
+    applyAllFilters();
+});
+
+init();
+</script>
+</body>
+</html>
