@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>にゃんこ大戦争 全キャラチェッカー</title>
     <style>
-        /* --- デザイン設定（既存を維持） --- */
+        /* --- デザイン設定 --- */
         :root {
             --primary-color: #ffb74d;
             --accent-color: #ffcc80;
@@ -26,7 +26,7 @@
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 1100px; /* 横幅を少し広げました */
             margin: 20px auto;
             background: var(--card-bg);
             padding: 25px;
@@ -87,36 +87,67 @@
             border-color: #e65100; box-shadow: 0 2px 0 #e65100; transform: translateY(2px);
         }
 
-        .grid { display: none; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 12px; padding: 10px; }
-        /* JSで制御するため active クラスの直接指定は削除 */
+        /* グリッド幅の指定 */
+        .grid { 
+            display: none; 
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); 
+            gap: 10px; 
+            padding: 10px; 
+            justify-items: center;
+        }
 
-        /* --- キャラクタカード --- */
+/* --- キャラクタカード（横の空白を完全に消す設定） --- */
         .char {
-            width: 85px; height: 110px; border: 2px solid var(--border-color);
-            border-radius: 15px; cursor: pointer; transition: all 0.2s ease;
-            background: #fff; display: flex; flex-direction: column; align-items: center;
+            width: 100px; 
+            height: 75px; 
+            border: 2px solid var(--border-color);
+            border-radius: 8px; 
+            cursor: pointer; 
+            transition: all 0.2s ease;
+            background: #fff; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
             justify-content: flex-start;
-            overflow: hidden; filter: grayscale(100%); opacity: 0.4;
+            overflow: hidden; 
+            filter: grayscale(100%); 
+            opacity: 0.6;
             position: relative;
         }
+
         .char.owned {
-            filter: grayscale(0%); opacity: 1; border: 3px solid var(--primary-color);
-            box-shadow: 0 4px 10px rgba(255, 152, 0, 0.3); background: #fffdf9;
+            filter: grayscale(0%); 
+            opacity: 1; 
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 10px rgba(255, 152, 0, 0.2);
         }
+
         .char img { 
-            width: 60px; 
-            height: 60px; 
-            object-fit: contain; 
-            margin-top: 8px; 
-            flex-shrink: 0;
-            border: none;
+            width: 110%;       /* 【重要】100%以上にすることで横の隙間を強制的に消す */
+            height: 65px;      /* 画像エリアの高さをしっかり確保 */
+            object-fit: cover; /* 枠に合わせて画像を拡大・トリミングする */
+            object-position: center 20%; /* にゃんこの顔が中心に来るように調整 */
+            margin-top: -5px;  /* 上に少し食い込ませて隙間を埋める */
         }
+
         .char-name {
-            font-size: 9px; font-weight: bold; text-align: center; 
-            color: #795548; background: rgba(255, 224, 178, 0.5); width: 100%;
-            padding: 3px 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;
+            font-size: 10px; 
+            font-weight: bold; 
+            text-align: center; 
+            color: #fff;
+            background: rgba(93, 64, 55, 0.85); /* 濃い茶色で足元を締める */
+            width: 100%;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             position: absolute;
             bottom: 0;
+            left: 0;
+            white-space: nowrap; 
+            text-overflow: ellipsis; 
+            overflow: hidden;
+            z-index: 2; /* 画像より上に表示 */
         }
 
         .reset-area { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 2px dashed #ffe0b2; }
@@ -182,7 +213,7 @@
 
 <script>
 let ownedList = JSON.parse(localStorage.getItem('nyanko_all_data')) || [];
-let activeRarities = ['legend']; // 初期選択
+let activeRarities = ['legend'];
 
 async function loadDatabase() {
     try {
@@ -230,22 +261,18 @@ async function init() {
     }
     document.getElementById('totalCount').innerText = total;
     updateStats();
-    applyAllFilters(); // 初回表示
+    applyAllFilters();
 }
 
-// タブの切り替え（トグル式）
 function toggleTab(rarity) {
     if (activeRarities.includes(rarity)) {
-        // すでに選択されている場合は解除（ただし1つも選択されないのは避けるなら条件追加）
         if (activeRarities.length > 1) {
             activeRarities = activeRarities.filter(r => r !== rarity);
         }
     } else {
-        // 未選択なら追加
         activeRarities.push(rarity);
     }
 
-    // ボタンの見た目を更新
     document.querySelectorAll('.tab-btn').forEach(btn => {
         const r = btn.getAttribute('data-rarity');
         if (activeRarities.includes(r)) {
@@ -294,13 +321,11 @@ function applyAllFilters() {
 
     const grids = document.querySelectorAll('.grid');
 
-    // グリッド全体の表示・非表示
     grids.forEach(grid => {
         const rarity = grid.id;
         if (activeRarities.includes(rarity)) {
             grid.style.display = 'grid';
             
-            // そのレア度の中の各キャラをフィルタ
             const chars = grid.querySelectorAll('.char');
             chars.forEach(char => {
                 const charName = char.querySelector('.char-name').innerText.toLowerCase();
